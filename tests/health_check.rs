@@ -1,6 +1,6 @@
 #[tokio::test]
 
-async fn health_check_worlds(){
+async fn health_check_works(){
     spwam_app();
 
     let client = reqwest::Client::new();
@@ -19,3 +19,4 @@ fn spwam_app() {
     let server = rust2prod::run().expect("Faield to bind address");
     let _ = tokio::spawn(server);
 }
+
