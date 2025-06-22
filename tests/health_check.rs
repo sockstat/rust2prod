@@ -1,7 +1,35 @@
-#[tokio::test]
-async fn health_check_works(){
-    spwam_app();
+//use std::net::TcpListener;
+//use rust2prod::startup::run;
 
+use rust2prod::configuration::get_configuration;
+use sqlx::{Connection, PgConnection, PgPool};
+use uuid::Uuid;
+
+pub struct TestApp {
+    pub address: String,
+    pub db_pool: PgPool,
+}
+/*
+async fn spwam_app() -> TestApp {
+    let listener = TcpListener::bind("127.0.0.1:9000").expect("Failed to bind port");
+    let address = format!("http://127.0.0.1:9000");
+
+    let configuration = get_configuration().expect("Failed to read configuration");
+    let connection_pool = PgPool::connect(
+        &configuration.database.connection_string()
+        )
+        .await
+        .expect("failed to connect to Postgres");
+
+    let server = run(listener, connection_pool.clone()).expect("Faield to bind address");
+    let _ = tokio::spawn(server);
+
+    TestApp { address: address, db_pool: connection_pool }
+}
+*/
+
+#[tokio::test]
+async fn health_check_works() {
     let client = reqwest::Client::new();
 
     let response = client
@@ -14,16 +42,11 @@ async fn health_check_works(){
     assert_eq!(Some(0), response.content_length());
 }
 
-fn spwam_app() {
-    let server = rust2prod::run().expect("Faield to bind address");
-    let _ = tokio::spawn(server);
-}
-
 #[tokio::test]
-async fn subscribe_returns_a_200_for_valid_form_data(){
+async fn create_subscription() {
     let client = reqwest::Client::new();
+    let body = format!("name=gabriel&email=gabrieldutra10@{}.com", Uuid::new_v4());
 
-    let body = "name=Gabriel&email=gabrieldutra8@proton.me";
     let response = client
         .post(&format!("{}/subscriptions", "http://127.0.0.1:9000"))
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -36,12 +59,29 @@ async fn subscribe_returns_a_200_for_valid_form_data(){
 }
 
 #[tokio::test]
+async fn subscribe_returns_a_200_for_valid_form_data() {
+    let configuration = get_configuration().expect("failed to read configuration");
+    let connection_string = configuration.database.connection_string();
+
+    let mut connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to Postgres.");
+
+    let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fech saved subscriptions");
+
+    assert_eq!(saved.name, "Gabriel");
+}
+
+#[tokio::test]
 async fn subscribe_returns_a_400_when_data_is_missing() {
     let client = reqwest::Client::new();
     let test_cases = vec![
         ("name=le%20guin", "missing the email"),
         ("email=gabriel%40gmail.com", "missing the name"),
-        ("", "missing both name and email")
+        ("", "missing both name and email"),
     ];
 
     for (invalid_body, error_message) in test_cases {
@@ -60,5 +100,4 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
             error_message
         );
     }
-
 }

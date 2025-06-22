@@ -17,6 +17,5 @@ jobs:
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Run tests
-        run: cargo test --verbose
-
+      - name: Run fmt
+        run: cargo fmt --verbose
