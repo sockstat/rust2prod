@@ -1,5 +1,3 @@
-use actix_web::http::header;
-
 #[tokio::test]
 async fn health_check_works(){
     spwam_app();
